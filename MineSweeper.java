@@ -12,6 +12,10 @@ public class MineSweeper extends DeveloperMS
     static String M[][]; // Actual randomly generated grid
     static String Md[][]; // Grid displayed to the player
 
+    public static void main(String[] args){
+        begin();
+    }
+    
     protected static void begin()
     {
         Scanner sc=new Scanner(System.in);
