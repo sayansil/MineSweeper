@@ -1,3 +1,10 @@
+/**
+* CLI Minesweeper game
+* @author Sayan Sil (Principal), Tamoghna Chowdhury (Editor)
+* @version 1.1
+* Organization St. James' School
+*/
+
 import java.util.Scanner;
 public class MineSweeper extends DeveloperMS
 {
@@ -5,6 +12,10 @@ public class MineSweeper extends DeveloperMS
     static String M[][]; // Actual randomly generated grid
     static String Md[][]; // Grid displayed to the player
 
+    public static void main(String[] args){
+        begin();
+    }
+    
     protected static void begin()
     {
         Scanner sc=new Scanner(System.in);
@@ -22,24 +33,20 @@ public class MineSweeper extends DeveloperMS
         n=sc.nextInt();
 
         int m;
-
-        if(n==1)//level easy
-        {    
+        switch(n){
+        case 1: //level easy  
             n=super.n1;
             mine=m=super.mine1;
-        }
-        else if(n==2)//level medium
-        { 
+        break;
+        case 2: //level medium
             n=super.n2;
             mine=m=super.mine2;
-        }
-        else if(n==3)//level hard
-        {
+        break;
+        case 3: //level difficult
             n=super.n3;
             mine=m=super.mine3;
-        }
-        else// level custom
-        {
+        break;
+        default: //level custom
             System.out.println("Enter the edge length of the square grid(between 5 to 25):");
             n=sc.nextInt();
             while(n<5||n>25)
@@ -55,20 +62,14 @@ public class MineSweeper extends DeveloperMS
                 mine=m=sc.nextInt();
             }
         }
-
         decide();
-
         assign();
-
         mine=m;
-
         randomlyStart();
         long start_time=System.nanoTime();
         rightHere();
         long end_time=System.nanoTime();
-
-        double time=(int)((end_time-start_time)/1000000000.0);
-
+        double time=(int)((end_time-start_time)/1E9);
         System.out.print("\n\nTIME TAKEN: ");
         if((int)(time/60)>0)
         {
@@ -96,7 +97,6 @@ public class MineSweeper extends DeveloperMS
                 i=(int)(Math.random()*n);
                 j=(int)(Math.random()*n);
             }while(M[i][j]=="X"||Md[i][j]!="*");
-
             Md[i][j]=M[i][j];
         }
 
@@ -408,8 +408,3 @@ public class MineSweeper extends DeveloperMS
         }
     }
 }
-
-/*#
-Name: Sayan Sil
-St. James School
-#*/
