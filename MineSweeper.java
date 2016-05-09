@@ -26,46 +26,14 @@ public class MineSweeper extends DeveloperMS
     public void startPage()
     {
         Scanner sc=new Scanner(System.in);
-        System.out.println("\n     ***************** MINESWEEPER ********************");
-        System.out.println("\n\n\t              Enter 1 for easy\n\t              Enter 2 for Medium\n\t              Enter 3 for Difficult\n\t              Enter 4 for Custom");
-        System.out.println("\n\n     **************************************************");
-        System.out.print("\n        Choose your difficulty:");
-        n=sc.nextInt();
-
-        int m;
-        switch(n){
-        case 1: //level easy  
-            n=super.n1;
-            mine=m=super.mine1;
-        break;
-        case 2: //level medium
-            n=super.n2;
-            mine=m=super.mine2;
-        break;
-        case 3: //level difficult
-            n=super.n3;
-            mine=m=super.mine3;
-        break;
-        default: //level custom
-            System.out.println("Enter the edge length of the square grid(between 5 to 25):");
-            n=sc.nextInt();
-            while(n<5||n>25)
-            {
-                System.out.println("Invalid option. Enter again.");
-                n=sc.nextInt();
-            }
-            System.out.println("Enter the number of mines(between 2 to 100, and cannot exceed half of the grid):");
-            mine=m=sc.nextInt();
-            while((mine<2||mine>100)||mine>(n*n)/2)
-            {
-                System.out.println("Invalid option. Enter again.");
-                mine=m=sc.nextInt();
-            }
-        }
+        
+        n=super.n1;
         decide();
         assign();
-        mine=m;
+        mine=super.mine1;
+        
         randomlyStart();
+        
         long start_time=System.nanoTime();
         rightHere();
         long end_time=System.nanoTime();
