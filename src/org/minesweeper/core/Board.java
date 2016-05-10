@@ -95,20 +95,35 @@ public class Board implements Serializable, Cloneable {
         return neighbours;
     }
     public boolean isLost(Cell selected) {
-        return hasMine(selected);
+        boolean lost = hasMine(selected);
+        if (lost) {
+            reveal(selected);
+            //reveal all the mines,which hadn't been revealed
+            revealAllMines();
+        }
+        return lost;
+    }
+    public void revealAllMines() {
+        for (Cell cell : mines) {
+            reveal(get(cell));
+        }
     }
     private void updateCellWithMineCount(Cell cell) {
+        //maintain the suspense
         if (hasMine(cell) || isMarked(cell)) {
             return;
         }
         for (Cell neighbour : getNeighbours(cell)) {
-            if (cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
+            //@formatter:off
+            if (cell.getNumberOfNeighboursWithMines() < 0 ||
+                        cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
                 break;
             }
+            //@formatter:on
             if (hasMine(neighbour)) {
                 //update mine count
                 set(cell, cell.getNumberOfNeighboursWithMines() + 1);
-            } else if (isClear(neighbour) && (!isMarked(neighbour))) {
+            } else if (isClear(neighbour) && (!(isMarked(neighbour) || hasMine(neighbour)))) {
                 //recursively update mine counts of all clear neighbours
                 updateCellWithMineCount(neighbour);
             }
@@ -124,7 +139,11 @@ public class Board implements Serializable, Cloneable {
                 }
             }
         }
-        return win || getMarkedCells().containsAll(Arrays.asList(mines));
+        win |= getMarkedCells().containsAll(Arrays.asList(mines));
+        if (win) {
+            revealAllMines();
+        }
+        return win;
     }
     public void reveal(Cell cell) {
         reveal(cell.getX(), cell.getY());
@@ -160,10 +179,12 @@ public class Board implements Serializable, Cloneable {
     public GameStatus update(Cell selected) {
         if (firstTime) {
             plantMines(selected);
+            firstTime = false;
         }
         if (isLost(selected)) {
             return GameStatus.LOST;
         } else if (isWon()) {
+            reveal(selected);
             return GameStatus.WON;
         } else {
             reveal(selected);
@@ -178,9 +199,14 @@ public class Board implements Serializable, Cloneable {
      */
     public void plantMines(Cell initialCell) {
         for (int counter = 0; counter < getMinesCount(); ) {
+            //get a random cell
             Cell randomCell = get(randInt(getHeight()), randInt(getWidth()));
-            if (initialCell == null || (!randomCell.equals(initialCell))) {
+            //protect a (valid) initial cell, and don't make it repeat itself (mine locations should be unique)
+            if ((initialCell == null || (!randomCell.equals(initialCell))) && (!hasMine(randomCell))) {
+                //add the random mine-containing cell to the mine list
                 mines[counter] = new Cell(randomCell, true);
+                mines[counter].setMine();
+                //update the counter
                 counter += randomCell.setMine();
             }
         }

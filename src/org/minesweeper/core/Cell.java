@@ -2,6 +2,11 @@ package org.minesweeper.core;
 import java.io.Serializable;
 /**
  * Encapsulates 1 cell of a MineSweeper board
+ * <br>
+ * UI programmers note:
+ * <br>
+ * Please check the status flags, especially the {@link #hasBeenRevealed} and {@link #marked} flags,
+ * before displaying/updating the game board and cells.
  */
 public class Cell implements Serializable, Cloneable {
     public static final int MINE = -1, CLEAR = 0, MAX_NEIGHBOURS = 8;
@@ -12,16 +17,6 @@ public class Cell implements Serializable, Cloneable {
         setX(x);
         setY(y);
         clear();
-    }
-    public Cell(Cell cell, boolean copyStatus) {
-        setX(cell.getX());
-        setY(cell.getY());
-        state = cell.state;
-        clear();
-        if(copyStatus){
-            hasBeenRevealed=cell.hasBeenRevealed();
-            marked=cell.isMarked();
-        }
     }
     public int clear() {
         if (!isClear()) {
@@ -38,7 +33,17 @@ public class Cell implements Serializable, Cloneable {
         this.hasBeenRevealed = hasBeenRevealed;
     }
     public Cell(Cell cell) {
-        this(cell,false);
+        this(cell, false);
+    }
+    public Cell(Cell cell, boolean copyStatus) {
+        setX(cell.getX());
+        setY(cell.getY());
+        state = cell.state;
+        clear();
+        if (copyStatus) {
+            hasBeenRevealed = cell.hasBeenRevealed();
+            marked = cell.isMarked();
+        }
     }
     public int getX() {
         return x;
@@ -51,26 +56,6 @@ public class Cell implements Serializable, Cloneable {
     }
     public void setY(int y) {
         this.y = y;
-    }
-    @Override
-    public int hashCode() {
-        int result = state;
-        result = HASH_MAGIC_NUMBER * result + getX();
-        result = HASH_MAGIC_NUMBER * result + getY();
-        result = HASH_MAGIC_NUMBER * result + (hasBeenRevealed() ? 1 : 0);
-        result = HASH_MAGIC_NUMBER * result + (isMarked() ? 1 : 0);
-        return result;
-    }
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Cell cell = (Cell) o;
-        return state == cell.state && getX() == cell.getX() && getY() == cell.getY();
-    }
-    @Override
-    public String toString() {
-        return this.getClass().getName() + "{" + "state=" + state + ", x=" + x + ", y=" + y + '}';
     }
     /**
      * @return true if the cell has been revealed, false if it hasn't
@@ -95,8 +80,28 @@ public class Cell implements Serializable, Cloneable {
         }
         return 0;
     }
+    @Override
+    public int hashCode() {
+        int result = state;
+        result = HASH_MAGIC_NUMBER * result + getX();
+        result = HASH_MAGIC_NUMBER * result + getY();
+        result = HASH_MAGIC_NUMBER * result + (hasBeenRevealed() ? 1 : 0);
+        result = HASH_MAGIC_NUMBER * result + (isMarked() ? 1 : 0);
+        return result;
+    }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Cell cell = (Cell) o;
+        return state == cell.state && getX() == cell.getX() && getY() == cell.getY();
+    }
+    @Override
+    public String toString() {
+        return this.getClass().getName() + "{" + "state=" + state + ", x=" + x + ", y=" + y + '}';
+    }
     public int getNumberOfNeighboursWithMines() {
-        return state;
+        return state < 0 ? MINE : state;
     }
     public int setMine() {
         if (!hasMine()) {
@@ -106,7 +111,7 @@ public class Cell implements Serializable, Cloneable {
         return 0;
     }
     public boolean hasMine() {
-        return state == MINE;
+        return state == MINE || state < 0;
     }
     public void setNeighbouringMineCount(int neighbouringMineCount) {
         if (neighbouringMineCount < 0) {
