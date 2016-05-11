@@ -10,6 +10,7 @@ public class Board implements Serializable, Cloneable {
     private final Cell[][] board;
     private final Cell[] mines;
     private boolean firstTime;
+    private int callsToUpdate;
     public Board(int width, int height, float mineFraction) {
         if (mineFraction < 0 || mineFraction > 1) {
             throw new IllegalArgumentException("Fraction of mines can only be between 0 & 1 : " + mineFraction);
@@ -22,6 +23,7 @@ public class Board implements Serializable, Cloneable {
         this.width = board[0].length;
         mines = new Cell[Math.round(mineFraction * getHeight() * getWidth())];
         firstTime = true;
+        callsToUpdate = 0;
         initBoard();
     }
     public int getWidth() {
@@ -50,7 +52,10 @@ public class Board implements Serializable, Cloneable {
         return mines;
     }
     public Cell get(Cell cell) {
-        return get(cell.getX(), cell.getY());
+        return get(board, cell);
+    }
+    public Cell get(Cell[][] board, Cell cell) {
+        return get(board, cell.getX(), cell.getY());
     }
     public void set(int x, int y, int neighbouringMineCount) {
         get(x, y).setNeighbouringMineCount(neighbouringMineCount);
@@ -82,14 +87,17 @@ public class Board implements Serializable, Cloneable {
         return marked;
     }
     public Cell[] getNeighbours(Cell cell) {
-        cell = get(cell);
+        return getNeighbours(board, cell);
+    }
+    public Cell[] getNeighbours(Cell[][] board, Cell cell) {
+        cell = get(board, cell);
         Cell[] neighbours = new Cell[Cell.MAX_NEIGHBOURS];
         for (int y = cell.getY() - 1, count = 0; y <= cell.getY() + 1; ++y) {
             for (int x = cell.getX() - 1; x <= cell.getX() + 1 && count < neighbours.length; ++x) {
                 if (cell.getX() == x && cell.getY() == y) {
                     continue;
                 }
-                neighbours[count++] = get(x, y);
+                neighbours[count++] = get(board, x, y);
             }
         }
         return neighbours;
@@ -99,13 +107,17 @@ public class Board implements Serializable, Cloneable {
         if (lost) {
             reveal(selected);
             //reveal all the mines,which hadn't been revealed
-            revealAllMines();
+            revealAll();
         }
         return lost;
     }
-    public void revealAllMines() {
-        for (Cell cell : mines) {
-            reveal(get(cell));
+    public void revealAll() {
+        for (Cell[] row : board) {
+            for (Cell cell : row) {
+                if (!hasBeenRevealed(cell)) {
+                    reveal(get(cell));
+                }
+            }
         }
     }
     private void updateCellWithMineCount(Cell cell) {
@@ -114,18 +126,61 @@ public class Board implements Serializable, Cloneable {
             return;
         }
         for (Cell neighbour : getNeighbours(cell)) {
-            //@formatter:off
-            if (cell.getNumberOfNeighboursWithMines() < 0 ||
-                        cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
+            if (cell.getNumberOfNeighboursWithMines() < 0 || cell.getNumberOfNeighboursWithMines() > Cell.MAX_NEIGHBOURS) {
                 break;
             }
-            //@formatter:on
             if (hasMine(neighbour)) {
                 //update mine count
                 set(cell, cell.getNumberOfNeighboursWithMines() + 1);
-            } else if (isClear(neighbour) && (!(isMarked(neighbour) || hasMine(neighbour)))) {
+            } else if (isClear(neighbour) && (!(hasBeenRevealed(neighbour) || isMarked(neighbour) || hasMine(neighbour)))) {
                 //recursively update mine counts of all clear neighbours
                 updateCellWithMineCount(neighbour);
+            }
+        }
+    }
+    /**
+     * Call this after the game has been completed, as it works on processed data.
+     * <br>
+     * Use for calculating scores:
+     * <ol>
+     * <li>Divide by total number of clicks (implemented)</li>
+     * <li>Divide by time taken</li>
+     * </ol>
+     *
+     * @return an objective measure of the difficulty of this minesweeper board
+     */
+    public int get3BValue() {
+        Cell[][] backup = new Cell[getHeight()][getWidth()];
+        for (int i = 0; i < getHeight(); ++i) {
+            for (int j = 0; j < getWidth(); ++j) {
+                backup[i][j] = new Cell(get(j, i), true);
+            }
+        }
+        int value = 0;
+        for (Cell[] row : backup) {
+            for (Cell cell : row) {
+                if (cell.isClear()) {
+                    if (!cell.isMarked()) {
+                        cell.mark();
+                        ++value;
+                        floodFillMark(backup, cell);
+                    }
+                }
+                if (!(cell.isMarked() || cell.hasMine())) {
+                    ++value;
+                }
+            }
+        }
+        return value;
+    }
+    private void floodFillMark(Cell[][] backup, Cell cell) {
+        Cell[] neighbours = getNeighbours(backup, cell);
+        for (Cell neighbour : neighbours) {
+            if (!neighbour.isMarked()) {
+                neighbour.mark();
+                if (neighbour.isClear()) {
+                    floodFillMark(backup, neighbour);
+                }
             }
         }
     }
@@ -141,9 +196,24 @@ public class Board implements Serializable, Cloneable {
         }
         win |= getMarkedCells().containsAll(Arrays.asList(mines));
         if (win) {
-            revealAllMines();
+            revealAll();
         }
         return win;
+    }
+    /**
+     * The click-based score, depending on number of calls to {@link #update(Cell)}.
+     * <br>
+     * Higher is better. Usually value is less than 1,
+     * multiply with time taken for completion and round to get presentable score.
+     * <br>
+     * For presentable score involving time, higher is not necessarily better.
+     * Usually, lower will be better (factoring in time taken to complete).
+     * <br>
+     * Call this after the game has ended.
+     * @return the click-based score
+     */
+    public double getClickBasedScore() {
+        return ((double) get3BValue()) / callsToUpdate;
     }
     public void reveal(Cell cell) {
         reveal(cell.getX(), cell.getY());
@@ -164,6 +234,9 @@ public class Board implements Serializable, Cloneable {
         get(x, y).mark();
     }
     public Cell get(int x, int y) {
+        return get(board, x, y);
+    }
+    public Cell get(Cell[][] board, int x, int y) {
         y = bounded(y, getHeight());
         return board[y][bounded(x, getWidth())];
     }
@@ -181,6 +254,7 @@ public class Board implements Serializable, Cloneable {
             plantMines(selected);
             firstTime = false;
         }
+        ++callsToUpdate;
         if (isLost(selected)) {
             return GameStatus.LOST;
         } else if (isWon()) {
